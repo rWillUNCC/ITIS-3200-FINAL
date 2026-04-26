@@ -1,3 +1,11 @@
+## ITIS 3200 - Final Project - Team 7
+## 4/26/2026
+## This project simulates a secure data offloading and retrieval system between a Server and a Client, 
+## with an adversary (Mallory) attempting to intercept and modify data. 
+## The system includes features for testing database connectivity, simulating failures, 
+## and displaying internal states for educational purposes.
+## Note: This code is for educational purposes.
+## Gemini Code Assit and GitHub Copilot were used to assist in the development of this project.
 from server import Server
 from client import Client
 
