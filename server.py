@@ -1,5 +1,7 @@
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
+import time
 
 """
 Represents the server node responsible for data preparation, signing, and integrity verification.
@@ -16,6 +18,9 @@ class Server:
         self.failState = False
         self.private_key, self.public_key = self.generate_rsa_keys()
         self.client_public_key = None
+        self.timer = time.time()
+        self.dbRequests = 0
+        self.displayMode = True
 
     """
     Generates a new pair of RSA keys (2048-bit).
@@ -52,7 +57,8 @@ class Server:
     @return: The generated digital signature.
     """
     def generate_signature(self, data):
-        print(f"{self.name} generating signature for data: {data}")
+        if self.displayMode:
+            print(f"{self.name} generating signature for data: {data}")
 
         
         # Sign the raw data bytes directly using the private key
@@ -62,7 +68,8 @@ class Server:
             hashes.SHA256()
         )
 
-        print("Signature generated")
+        if self.displayMode:
+            print("Signature generated")
         return signature
     
     """
@@ -80,9 +87,10 @@ class Server:
                 padding.PKCS1v15(),
                 hashes.SHA256()
             )
-            print(f"{self.name} signature verification successful.")
+            if self.displayMode:
+                print(f"{self.name} signature verification successful.")
             return True
-        except Exception:
+        except (InvalidSignature, TypeError):
             print(f"{self.name} signature verification failed.")
             return False
 
@@ -101,11 +109,13 @@ class Server:
     @return: The hexadecimal representation of the hash.
     """
     def compute_hash(self, data):
-        print(f"Computing hash of data: {data}")
+        if self.displayMode:
+            print(f"Computing hash of data: {data}")
         digest = hashes.Hash(hashes.SHA256())
-        digest.update(str(data).encode())
+        digest.update(data.encode() if isinstance(data, str) else data)
         result = digest.finalize().hex()
-        print(f"Hash computed: {result}")
+        if self.displayMode:
+            print(f"Hash computed: {result}")
         return result
 
     """
@@ -163,3 +173,58 @@ class Server:
             self.dataCache = data
             print(f"Data retrieved successfully. Current data cache: {self.dataCache}")
             return True
+
+    """
+    Implements a rate-limiting mechanism for database requests.
+    
+    @return: True if the request is allowed, False if the limit is exceeded.
+    """
+    def db_gate(self):
+        current_time = time.time()
+        if current_time - self.timer > 60:
+            self.timer = current_time
+            self.dbRequests = 0
+            
+        self.dbRequests += 1
+        if self.dbRequests > 5:
+            print("Database request limit exceeded. Please wait before making more requests.")
+            return False
+        else:
+            return True
+    
+    """
+    Simulates a database CRUD operation, respecting the rate limit or forced failure state.
+    
+    @return: True if the operation succeeded, False otherwise.
+    """
+    def crud_mockup(self):
+        if self.failState:
+            self.dbRequests += 1
+            return True
+        elif self.db_gate():
+            if self.displayMode:
+                print("Performing CRUD operation on the database...")
+            return True
+        else:
+            return False
+    
+    """
+    Prints the current values of the server's internal variables for debugging and monitoring.
+    """
+    def display_server_internal_state(self):
+        print("Server internal state:")
+        print(f"Data Cache: {self.dataCache}")
+        print(f"Hash Cache: {self.hashCache}")
+        print(f"Client Public Key: {self.client_public_key}")
+        print(f"Database Requests: {self.dbRequests}")
+        print(f"Fail State: {self.failState}")
+
+    """
+    Resets the server's internal state to its initial default values.
+    """
+    def reset_server_state(self):
+        self.dataCache = "I love security!"
+        self.hashCache = None
+        self.dbRequests = 0
+        self.failState = False
+        self.displayMode = True
