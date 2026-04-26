@@ -1,5 +1,6 @@
 from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import hashes
+from cryptography.exceptions import InvalidSignature
 
 """
 Represents the client node responsible for receiving, storing, and sending data back to the server.
@@ -13,6 +14,8 @@ class Client:
         self.dataCache = ""
         self.private_key, self.public_key = self.generate_rsa_keys()
         self.server_public_key = None
+        self.failState = False
+        self.displayMode = True
 
     
     """
@@ -49,11 +52,17 @@ class Client:
     @return: The generated digital signature.
     """
     def generate_signature(self, data):
+        if self.displayMode:
+            print(f"{self.name} generating signature for data: {data}")
+            
         signature = self.private_key.sign(
             data.encode(),
             padding.PKCS1v15(),
             hashes.SHA256()
         )
+        
+        if self.displayMode:
+            print("Signature generated")
         return signature
 
     """
@@ -73,7 +82,7 @@ class Client:
             )
             print(f"{self.name} signature verification successful.")
             return True
-        except Exception:
+        except (InvalidSignature, TypeError):
             print(f"{self.name} signature verification failed.")
             return False
     
@@ -103,8 +112,16 @@ class Client:
     @return: A tuple containing (data, signature).
     """
     def send_data(self, failState):
-        print(f"{self.name} sending data...")
+        if self.displayMode:
+            print(f"{self.name} sending data...")
         data = "I hate security!" if failState else self.dataCache
         signature = self.generate_signature(data)
         return data, signature
         
+    """
+    Resets the client's internal state to its initial default values.
+    """
+    def reset_client_state(self):
+        self.dataCache = ""
+        self.failState = False
+        self.displayMode = True
